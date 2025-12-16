@@ -90,6 +90,18 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Server Tab Styles */
+        .server-tab {
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+            opacity: 0.6;
+        }
+        .server-tab.active {
+            opacity: 1;
+            border-bottom-color: #fbbf24;
+            color: #fbbf24;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4">
@@ -101,11 +113,28 @@
     </div>
 
     <!-- Start Screen -->
-    <div id="startScreen" class="w-full max-w-md text-center space-y-6 hidden">
-        <h1 class="text-5xl text-yellow-400 drop-shadow-lg mb-2">이모지 강화하기</h1>
-        <div id="connectionStatus" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-gray-700 text-gray-400 mb-2">
-            ⚪ 오프라인 모드
+    <div id="startScreen" class="w-full max-w-md text-center space-y-6 hidden relative">
+        <!-- Settings Button -->
+        <button onclick="window.openConfigModal()" class="absolute top-0 right-0 p-2 text-gray-400 hover:text-white transition text-xs" title="서버 설정">
+            ⚙️ 설정
+        </button>
+
+        <h1 class="text-5xl text-yellow-400 drop-shadow-lg mb-2 pt-4">이모지 강화하기</h1>
+        
+        <!-- Connection Status & Server Select -->
+        <div class="flex flex-col items-center gap-2 mb-2">
+            <div id="connectionStatus" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-gray-700 text-gray-400">
+                ⚪ 오프라인
+            </div>
+            
+            <!-- Server Select Tabs -->
+            <div id="serverSelector" class="hidden flex gap-4 text-sm font-bold bg-gray-800/50 p-2 rounded-xl border border-gray-700">
+                <button onclick="window.switchServer('s1')" id="btn-s1" class="server-tab active px-2">1채널</button>
+                <button onclick="window.switchServer('s2')" id="btn-s2" class="server-tab px-2">2채널</button>
+                <button onclick="window.switchServer('s3')" id="btn-s3" class="server-tab px-2">3채널</button>
+            </div>
         </div>
+
         <p class="text-gray-400 text-lg">0단계 먼지부터 50단계 우주까지!</p>
         
         <div class="glass-panel p-6 space-y-4">
@@ -123,9 +152,10 @@
 
         <div class="glass-panel p-4 relative">
             <div class="flex justify-between items-center mb-2">
-                <h3 class="text-xl text-yellow-300">🏆 명예의 전당 Top 10</h3>
+                <h3 class="text-xl text-yellow-300">🏆 <span id="rankTitle">로컬</span> 랭킹</h3>
                 <div class="flex items-center gap-1 text-xs text-gray-400">
-                    <div id="statusDot" class="w-2 h-2 rounded-full bg-gray-500"></div> <span id="statusText">로컬</span>
+                    <div id="statusDot" class="w-2 h-2 rounded-full bg-gray-500"></div> 
+                    <span id="statusText">Local</span>
                 </div>
             </div>
             <div id="startLeaderboardList" class="space-y-2 text-sm min-h-[100px]">
@@ -194,11 +224,28 @@
         </div>
     </div>
 
+    <!-- Config Modal -->
+    <div id="configModal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[70] p-4">
+        <div class="bg-gray-800 border-2 border-gray-600 w-full max-w-md rounded-2xl p-6 shadow-2xl">
+            <h2 class="text-2xl font-bold text-white mb-4">⚙️ Firebase 서버 설정</h2>
+            <p class="text-sm text-gray-400 mb-4">
+                오프라인 환경(다운로드 파일)에서 온라인 랭킹을 사용하려면 Firebase Config가 필요합니다.<br>
+                <span class="text-yellow-400">파일에 설정을 미리 적어두면 이 과정이 필요 없습니다.</span>
+            </p>
+            <textarea id="configInput" rows="6" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-xs text-gray-300 font-mono mb-4" placeholder='{ "apiKey": "...", "authDomain": "...", ... }'></textarea>
+            <div class="flex gap-2">
+                <button onclick="window.saveConfig()" class="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 rounded font-bold">저장 및 연결</button>
+                <button onclick="window.clearConfig()" class="flex-1 bg-red-800 hover:bg-red-700 text-white py-2 rounded font-bold">설정 삭제 (오프라인)</button>
+            </div>
+            <button onclick="document.getElementById('configModal').classList.add('hidden')" class="w-full mt-2 text-gray-500 text-sm hover:text-white">닫기</button>
+        </div>
+    </div>
+
     <!-- Leaderboard Modal (In Game) -->
     <div id="leaderboardSection" class="hidden w-full max-w-md mt-10">
         <div class="glass-panel p-5">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold text-yellow-400">🏆 명예의 전당</h2>
+                <h2 class="text-2xl font-bold text-yellow-400">🏆 <span id="ingameRankTitle">로컬</span> 랭킹</h2>
                 <span id="ingameStatus" class="text-xs text-gray-400">● Local</span>
             </div>
             <div id="leaderboardList" class="space-y-3"></div>
@@ -211,27 +258,135 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        /*
+         * =========================================================================
+         * [사용자 설정 영역] - 친구와 공유할 때 여기를 채우세요!
+         * =========================================================================
+         * 1. Firebase 콘솔(https://console.firebase.google.com/)에서 프로젝트 생성
+         * 2. 프로젝트 설정 -> 일반 -> "내 앱" -> 웹 앱 추가 -> Config 복사
+         * 3. 아래 `YOUR_FIREBASE_CONFIG` 변수에 복사한 내용을 붙여넣으세요.
+         * 예시: const YOUR_FIREBASE_CONFIG = { apiKey: "...", ... };
+         */
+        const YOUR_FIREBASE_CONFIG = {
+          apiKey: "AIzaSyBtK7NAfw4wDsS4LRacWF78PHT3zls50IQ",
+          authDomain: "dsgames-fecef.firebaseapp.com",
+          projectId: "dsgames-fecef",
+          storageBucket: "dsgames-fecef.firebasestorage.app",
+          messagingSenderId: "723943517090",
+          appId: "1:723943517090:web:3e8596971cedf46cc460fb",
+          measurementId: "G-GNVR6N4LKQ"
+        };
+        
+        // =========================================================================
+
         // --- System State ---
         let isOnline = false;
         let db = null;
         let auth = null;
         let currentUser = null;
+        let unsubscribeLeaderboard = null;
+        
+        let currentServer = 's1'; // s1, s2, s3
+        const COLLECTIONS = {
+            s1: 'emoji_rankings_v2_s1',
+            s2: 'emoji_rankings_v2_s2',
+            s3: 'emoji_rankings_v2_s3'
+        };
+
         const LOCAL_STORAGE_KEY = 'emoji_upgrade_local_v2';
-        const APP_ID = 'default-app-id'; // Fallback
+        const CONFIG_STORAGE_KEY = 'emoji_upgrade_firebase_config';
+        const APP_ID = 'default-app-id'; 
+
+        // --- Config UI Functions ---
+        window.openConfigModal = function() {
+            const savedConfig = localStorage.getItem(CONFIG_STORAGE_KEY);
+            // Show pretty config if hardcoded
+            if (YOUR_FIREBASE_CONFIG) {
+                document.getElementById('configInput').value = "파일에 설정이 이미 포함되어 있습니다 (YOUR_FIREBASE_CONFIG).";
+                document.getElementById('configInput').disabled = true;
+            } else if (savedConfig) {
+                document.getElementById('configInput').value = savedConfig;
+            }
+            document.getElementById('configModal').classList.remove('hidden');
+        }
+
+        window.saveConfig = function() {
+            if (YOUR_FIREBASE_CONFIG) {
+                alert("파일 내부에 설정이 이미 저장되어 있습니다.");
+                return;
+            }
+            const input = document.getElementById('configInput').value.trim();
+            if (!input) return;
+            try {
+                JSON.parse(input); // Validate JSON
+                localStorage.setItem(CONFIG_STORAGE_KEY, input);
+                alert("설정이 저장되었습니다. 페이지를 새로고침하여 연결합니다.");
+                location.reload();
+            } catch (e) {
+                alert("유효하지 않은 JSON 형식입니다.");
+            }
+        }
+
+        window.clearConfig = function() {
+            if (YOUR_FIREBASE_CONFIG) {
+                alert("파일 내부 설정(YOUR_FIREBASE_CONFIG)을 먼저 지워야 합니다.");
+                return;
+            }
+            localStorage.removeItem(CONFIG_STORAGE_KEY);
+            alert("설정이 삭제되었습니다. 오프라인 모드로 전환됩니다.");
+            location.reload();
+        }
+
+        // --- Server Switch Logic ---
+        window.switchServer = function(serverId) {
+            if (!isOnline) {
+                alert("오프라인 모드에서는 채널을 변경할 수 없습니다.");
+                return;
+            }
+            if (currentServer === serverId) return;
+
+            currentServer = serverId;
+            
+            // UI Update
+            document.querySelectorAll('.server-tab').forEach(el => el.classList.remove('active'));
+            document.getElementById(`btn-${serverId}`).classList.add('active');
+            
+            const serverName = serverId === 's1' ? '1채널' : serverId === 's2' ? '2채널' : '3채널';
+            document.getElementById('rankTitle').innerText = serverName;
+            document.getElementById('ingameRankTitle').innerText = serverName;
+
+            // Re-subscribe
+            listenToLeaderboard();
+        }
 
         // --- Init Function ---
         async function initSystem() {
             try {
-                // Check if we are in the Preview Environment (variables exist)
-                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                    const firebaseConfig = JSON.parse(__firebase_config);
-                    const app = initializeApp(firebaseConfig);
+                let configToUse = null;
+                let isHardcoded = false;
+
+                // Priority: 1. Hardcoded in file (for sharing) 2. Environment (Canvas) 3. LocalStorage (User pasted)
+                if (YOUR_FIREBASE_CONFIG) {
+                    configToUse = YOUR_FIREBASE_CONFIG;
+                    isHardcoded = true;
+                    console.log("Using Hardcoded Config");
+                } else if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    configToUse = JSON.parse(__firebase_config);
+                } else {
+                    const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
+                    if (saved) {
+                        configToUse = JSON.parse(saved);
+                    }
+                }
+
+                if (configToUse) {
+                    const app = initializeApp(configToUse);
                     auth = getAuth(app);
                     db = getFirestore(app);
                     
-                    // Auth Flow
                     let authSuccess = false;
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    // Try custom token only if we are in environment that provides it AND not using hardcoded (unless hardcoded includes logic, but simplistic here)
+                    if (!isHardcoded && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                         try {
                             await signInWithCustomToken(auth, __initial_auth_token);
                             authSuccess = true;
@@ -244,24 +399,18 @@
                     
                     currentUser = auth.currentUser;
                     isOnline = true;
-                    console.log("Online Mode Activated");
                     
-                    // Start Listener
                     listenToLeaderboard();
                 } else {
-                    throw new Error("Local Environment Detected");
+                    throw new Error("No Configuration Found");
                 }
             } catch (error) {
                 console.log("Switching to Offline Mode:", error.message);
                 isOnline = false;
-                // Offline Listener (Local Storage)
                 renderLocalLeaderboard();
             }
 
-            // Update UI for Mode
             updateModeUI();
-            
-            // Hide Loader & Show Screen
             document.getElementById('serverLoading').classList.add('hidden');
             document.getElementById('startScreen').classList.remove('hidden');
         }
@@ -272,48 +421,67 @@
             const statusDot = document.getElementById('statusDot');
             const statusText = document.getElementById('statusText');
             const ingameStatus = document.getElementById('ingameStatus');
+            const serverSelector = document.getElementById('serverSelector');
+            const rankTitle = document.getElementById('rankTitle');
 
             if (isOnline) {
                 statusBadge.innerHTML = '🟢 온라인 모드';
-                statusBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-green-900 text-green-400 mb-2';
-                modeDesc.innerText = "모든 플레이어와 랭킹을 공유합니다.";
+                statusBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-green-900 text-green-400';
+                modeDesc.innerText = "채널을 선택하여 랭킹을 공유하세요.";
                 statusDot.className = "w-2 h-2 rounded-full bg-green-500 animate-pulse";
-                statusText.innerText = "실시간";
+                statusText.innerText = "Live";
                 statusText.className = "text-green-400";
-                ingameStatus.innerText = "● Live Global";
+                ingameStatus.innerText = "● Live " + (currentServer === 's1' ? '1채널' : currentServer === 's2' ? '2채널' : '3채널');
                 ingameStatus.className = "text-xs text-green-400";
+                
+                // Show Server Select
+                serverSelector.classList.remove('hidden');
+                rankTitle.innerText = "1채널";
             } else {
                 statusBadge.innerHTML = '⚪ 오프라인 모드';
-                statusBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-gray-700 text-gray-300 mb-2';
+                statusBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-gray-700 text-gray-300';
                 modeDesc.innerText = "기록이 내 컴퓨터에만 저장됩니다.";
                 statusDot.className = "w-2 h-2 rounded-full bg-gray-500";
-                statusText.innerText = "로컬";
+                statusText.innerText = "Local";
                 statusText.className = "text-gray-400";
                 ingameStatus.innerText = "● Local Only";
                 ingameStatus.className = "text-xs text-gray-400";
+                
+                serverSelector.classList.add('hidden');
+                rankTitle.innerText = "로컬";
             }
         }
 
-        // --- Leaderboard Logic (Hybrid) ---
+        // --- Leaderboard Logic (Hybrid + Channels) ---
         function listenToLeaderboard() {
             if (!isOnline) {
                 renderLocalLeaderboard();
                 return;
             }
 
+            // Unsubscribe previous listener
+            if (unsubscribeLeaderboard) {
+                unsubscribeLeaderboard();
+            }
+
+            // Define collection based on currentServer
+            const collectionName = COLLECTIONS[currentServer];
             const appId = typeof __app_id !== 'undefined' ? __app_id : APP_ID;
-            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'emoji_rankings_v2');
             
-            onSnapshot(colRef, (snapshot) => {
+            // UI Loading state
+            document.getElementById('startLeaderboardList').innerHTML = '<div class="text-gray-500 py-4 text-center">데이터 교체 중...</div>';
+            
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', collectionName);
+            
+            unsubscribeLeaderboard = onSnapshot(colRef, (snapshot) => {
                 const rankings = [];
                 snapshot.forEach(doc => rankings.push(doc.data()));
                 rankings.sort((a, b) => b.level - a.level);
                 renderLeaderboardUI(rankings);
             }, (error) => {
                 console.error("Fetch Error, fallback to local", error);
-                isOnline = false;
-                updateModeUI();
-                renderLocalLeaderboard();
+                // Don't fallback to local immediately on error if we are supposed to be online, just show error
+                document.getElementById('startLeaderboardList').innerHTML = '<div class="text-red-500 py-4 text-center">불러오기 실패</div>';
             });
         }
 
@@ -368,7 +536,8 @@
             if (isOnline && currentUser) {
                 try {
                     const appId = typeof __app_id !== 'undefined' ? __app_id : APP_ID;
-                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'emoji_rankings_v2');
+                    const collectionName = COLLECTIONS[currentServer]; // Use selected server
+                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', collectionName);
                     await addDoc(colRef, { ...data, uid: currentUser.uid });
                     return true;
                 } catch (e) {
@@ -380,11 +549,9 @@
             const localData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
             localData.push(data);
             localData.sort((a, b) => b.level - a.level);
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(localData.slice(0, 50))); // Keep top 50 locally
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(localData.slice(0, 50))); 
             
-            // Re-render immediately if offline
             if (!isOnline) renderLocalLeaderboard();
-            
             return true;
         }
 
