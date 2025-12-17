@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>이모지 강화하기 🌍</title>
+    <title>이모지 강화하기 Live 1.7 (Easy) 🌍</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
@@ -16,6 +16,7 @@
             touch-action: manipulation;
         }
         
+        /* 효과 애니메이션 정의 */
         @keyframes flash {
             0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); transform: scale(1); }
             50% { box-shadow: 0 0 50px 20px rgba(255, 255, 255, 0); transform: scale(1.1); }
@@ -52,6 +53,18 @@
         @keyframes floatUp {
             0% { opacity: 1; transform: translateY(0) scale(1); }
             100% { opacity: 0; transform: translateY(-50px) scale(1.5); }
+        }
+
+        /* Fever Mode Styles */
+        @keyframes fever-pulse {
+            0% { box-shadow: 0 0 10px #fbbf24; border-color: #fbbf24; }
+            50% { box-shadow: 0 0 30px #f59e0b; border-color: #f59e0b; transform: scale(1.02); }
+            100% { box-shadow: 0 0 10px #fbbf24; border-color: #fbbf24; }
+        }
+
+        .fever-active {
+            animation: fever-pulse 0.5s infinite;
+            background: linear-gradient(to bottom, #451a03, #1a1a2e) !important;
         }
 
         .animate-flash { animation: flash 0.3s ease-out; }
@@ -119,11 +132,14 @@
             ⚙️ 설정
         </button>
 
-        <h1 class="text-5xl text-yellow-400 drop-shadow-lg mb-2 pt-4">이모지 강화하기</h1>
+        <h1 class="text-5xl text-yellow-400 drop-shadow-lg mb-2 pt-4">
+            이모지 강화하기
+            <span class="text-xs align-top bg-green-600 text-white px-1.5 py-0.5 rounded-md ml-1 shadow-md">Easy</span>
+        </h1>
         
         <!-- Connection Status & Server Select -->
         <div class="flex flex-col items-center gap-2 mb-2">
-            <div id="connectionStatus" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-gray-700 text-gray-400">
+            <div id="connectionStatus" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-gray-700 text-gray-400 cursor-pointer hover:bg-gray-600 transition">
                 ⚪ 오프라인
             </div>
             
@@ -139,8 +155,11 @@
         
         <div class="glass-panel p-6 space-y-4">
             <div class="text-6xl animate-bounce">⚒️</div>
+            <div class="text-sm text-gray-300 space-y-1">
+                <p><span class="text-green-400 font-bold">Easy Mode!</span> 확률 3% 상향 & 구간별 보존!</p>
+                <p>연속 성공 시 <span class="text-orange-400 font-bold">피버 타임</span> 발동!</p>
+            </div>
             <p class="text-sm text-gray-300">
-                <span class="text-red-400 font-bold">New!</span> 운이 좋으면 2~3단계 점프!<br>
                 <span id="modeDesc">로컬에 기록이 저장됩니다.</span>
             </p>
             <input type="text" id="playerNameInput" placeholder="닉네임 (최대 8글자)" maxlength="8" 
@@ -166,12 +185,25 @@
 
     <!-- Game Screen -->
     <div id="gameScreen" class="hidden w-full max-w-md flex flex-col items-center relative">
-        <div class="w-full flex justify-between items-center mb-6 glass-panel p-3 px-5">
+        <!-- Top Info -->
+        <div class="w-full flex justify-between items-center mb-2 glass-panel p-3 px-5">
             <div class="text-gray-400">플레이어: <span id="displayPlayerName" class="text-white font-bold"></span></div>
-            <div class="text-gray-400">현재 확률: <span id="currentChance" class="text-green-400 font-bold">99%</span></div>
+            <div class="text-gray-400">확률: <span id="currentChance" class="text-green-400 font-bold">99%</span></div>
         </div>
 
-        <div id="cardArea" class="w-full bg-gradient-to-b from-gray-800 to-gray-900 rounded-3xl p-8 shadow-2xl border-4 border-gray-700 text-center relative overflow-hidden mb-6">
+        <!-- Fever Bar -->
+        <div class="w-full h-2 bg-gray-800 rounded-full mb-4 overflow-hidden border border-gray-700 relative">
+            <div id="feverBar" class="h-full bg-gradient-to-r from-orange-500 to-yellow-400 transition-all duration-300" style="width: 0%"></div>
+            <div id="feverText" class="absolute inset-0 text-[10px] flex items-center justify-center font-bold text-black hidden">🔥 FEVER MODE 🔥</div>
+        </div>
+
+        <!-- Main Card -->
+        <div id="cardArea" class="w-full bg-gradient-to-b from-gray-800 to-gray-900 rounded-3xl p-8 shadow-2xl border-4 border-gray-700 text-center relative overflow-hidden mb-6 transition-colors duration-500">
+            <!-- Safe Zone Indicator -->
+            <div id="safeZoneIndicator" class="hidden absolute top-4 right-4 text-xs font-bold px-2 py-1 rounded border transition-colors">
+                <!-- Text Injected by JS -->
+            </div>
+
             <div class="absolute top-0 left-0 w-full h-2 bg-gray-700">
                 <div id="progressBar" class="h-full bg-yellow-500 transition-all duration-500" style="width: 0%"></div>
             </div>
@@ -186,6 +218,7 @@
             <div id="descDisplay" class="text-sm text-gray-500">아무런 가치가 없습니다.</div>
         </div>
 
+        <!-- Control Buttons -->
         <div class="w-full grid grid-cols-2 gap-4">
             <button onclick="window.stopGame()" class="bg-gray-700 hover:bg-gray-600 text-gray-200 py-4 rounded-2xl font-bold text-xl shadow-lg transform transition active:scale-95 border-b-4 border-gray-900">
                 ✋ 멈추기<br><span class="text-xs font-normal text-gray-400">기록 저장</span>
@@ -229,15 +262,13 @@
         <div class="bg-gray-800 border-2 border-gray-600 w-full max-w-md rounded-2xl p-6 shadow-2xl">
             <h2 class="text-2xl font-bold text-white mb-4">⚙️ Firebase 서버 설정</h2>
             <p class="text-sm text-gray-400 mb-4">
-                오프라인 환경(다운로드 파일)에서 온라인 랭킹을 사용하려면 Firebase Config가 필요합니다.<br>
-                <span class="text-yellow-400">파일에 설정을 미리 적어두면 이 과정이 필요 없습니다.</span>
+                현재 파일 내부에 <b>고정된 서버 설정</b>이 적용되어 있습니다.<br>
+                <span class="text-green-400">별도의 설정 없이 바로 이용 가능합니다.</span>
             </p>
-            <textarea id="configInput" rows="6" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-xs text-gray-300 font-mono mb-4" placeholder='{ "apiKey": "...", "authDomain": "...", ... }'></textarea>
+            <textarea id="configInput" rows="6" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-xs text-gray-300 font-mono mb-4" placeholder='{ "apiKey": "...", "authDomain": "...", ... }' disabled></textarea>
             <div class="flex gap-2">
-                <button onclick="window.saveConfig()" class="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 rounded font-bold">저장 및 연결</button>
-                <button onclick="window.clearConfig()" class="flex-1 bg-red-800 hover:bg-red-700 text-white py-2 rounded font-bold">설정 삭제 (오프라인)</button>
+                <button onclick="document.getElementById('configModal').classList.add('hidden')" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded font-bold">닫기</button>
             </div>
-            <button onclick="document.getElementById('configModal').classList.add('hidden')" class="w-full mt-2 text-gray-500 text-sm hover:text-white">닫기</button>
         </div>
     </div>
 
@@ -258,15 +289,9 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        /*
-         * =========================================================================
-         * [사용자 설정 영역] - 친구와 공유할 때 여기를 채우세요!
-         * =========================================================================
-         * 1. Firebase 콘솔(https://console.firebase.google.com/)에서 프로젝트 생성
-         * 2. 프로젝트 설정 -> 일반 -> "내 앱" -> 웹 앱 추가 -> Config 복사
-         * 3. 아래 `YOUR_FIREBASE_CONFIG` 변수에 복사한 내용을 붙여넣으세요.
-         * 예시: const YOUR_FIREBASE_CONFIG = { apiKey: "...", ... };
-         */
+        // =========================================================================
+        // [사용자 서버 설정 적용됨] - dsgames-fecef
+        // =========================================================================
         const YOUR_FIREBASE_CONFIG = {
           apiKey: "AIzaSyBtK7NAfw4wDsS4LRacWF78PHT3zls50IQ",
           authDomain: "dsgames-fecef.firebaseapp.com",
@@ -276,7 +301,6 @@
           appId: "1:723943517090:web:3e8596971cedf46cc460fb",
           measurementId: "G-GNVR6N4LKQ"
         };
-        
         // =========================================================================
 
         // --- System State ---
@@ -293,48 +317,25 @@
             s3: 'emoji_rankings_v2_s3'
         };
 
+        const CHECKPOINTS = [10, 20, 30, 40];
+        // Track consumed checkpoints (set of level numbers)
+        let consumedCheckpoints = new Set();
+
         const LOCAL_STORAGE_KEY = 'emoji_upgrade_local_v2';
         const CONFIG_STORAGE_KEY = 'emoji_upgrade_firebase_config';
         const APP_ID = 'default-app-id'; 
 
+        // Fever System
+        let feverCount = 0;
+        let feverActive = false;
+        let feverTimer = null;
+        const FEVER_THRESHOLD = 5; // Successes needed
+        const FEVER_DURATION = 5000; // ms
+
         // --- Config UI Functions ---
         window.openConfigModal = function() {
-            const savedConfig = localStorage.getItem(CONFIG_STORAGE_KEY);
-            // Show pretty config if hardcoded
-            if (YOUR_FIREBASE_CONFIG) {
-                document.getElementById('configInput').value = "파일에 설정이 이미 포함되어 있습니다 (YOUR_FIREBASE_CONFIG).";
-                document.getElementById('configInput').disabled = true;
-            } else if (savedConfig) {
-                document.getElementById('configInput').value = savedConfig;
-            }
+            document.getElementById('configInput').value = JSON.stringify(YOUR_FIREBASE_CONFIG, null, 2);
             document.getElementById('configModal').classList.remove('hidden');
-        }
-
-        window.saveConfig = function() {
-            if (YOUR_FIREBASE_CONFIG) {
-                alert("파일 내부에 설정이 이미 저장되어 있습니다.");
-                return;
-            }
-            const input = document.getElementById('configInput').value.trim();
-            if (!input) return;
-            try {
-                JSON.parse(input); // Validate JSON
-                localStorage.setItem(CONFIG_STORAGE_KEY, input);
-                alert("설정이 저장되었습니다. 페이지를 새로고침하여 연결합니다.");
-                location.reload();
-            } catch (e) {
-                alert("유효하지 않은 JSON 형식입니다.");
-            }
-        }
-
-        window.clearConfig = function() {
-            if (YOUR_FIREBASE_CONFIG) {
-                alert("파일 내부 설정(YOUR_FIREBASE_CONFIG)을 먼저 지워야 합니다.");
-                return;
-            }
-            localStorage.removeItem(CONFIG_STORAGE_KEY);
-            alert("설정이 삭제되었습니다. 오프라인 모드로 전환됩니다.");
-            location.reload();
         }
 
         // --- Server Switch Logic ---
@@ -347,36 +348,27 @@
 
             currentServer = serverId;
             
-            // UI Update
             document.querySelectorAll('.server-tab').forEach(el => el.classList.remove('active'));
             document.getElementById(`btn-${serverId}`).classList.add('active');
             
             const serverName = serverId === 's1' ? '1채널' : serverId === 's2' ? '2채널' : '3채널';
-            document.getElementById('rankTitle').innerText = serverName;
-            document.getElementById('ingameRankTitle').innerText = serverName;
+            const rankTitle = document.getElementById('rankTitle');
+            const ingameRankTitle = document.getElementById('ingameRankTitle');
+            if (rankTitle) rankTitle.innerText = serverName;
+            if (ingameRankTitle) ingameRankTitle.innerText = serverName;
 
-            // Re-subscribe
             listenToLeaderboard();
         }
 
         // --- Init Function ---
         async function initSystem() {
             try {
-                let configToUse = null;
-                let isHardcoded = false;
+                let configToUse = YOUR_FIREBASE_CONFIG;
+                let isHardcoded = true;
 
-                // Priority: 1. Hardcoded in file (for sharing) 2. Environment (Canvas) 3. LocalStorage (User pasted)
-                if (YOUR_FIREBASE_CONFIG) {
-                    configToUse = YOUR_FIREBASE_CONFIG;
-                    isHardcoded = true;
-                    console.log("Using Hardcoded Config");
-                } else if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                if (!configToUse && typeof __firebase_config !== 'undefined' && __firebase_config) {
                     configToUse = JSON.parse(__firebase_config);
-                } else {
-                    const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
-                    if (saved) {
-                        configToUse = JSON.parse(saved);
-                    }
+                    isHardcoded = false;
                 }
 
                 if (configToUse) {
@@ -385,7 +377,6 @@
                     db = getFirestore(app);
                     
                     let authSuccess = false;
-                    // Try custom token only if we are in environment that provides it AND not using hardcoded (unless hardcoded includes logic, but simplistic here)
                     if (!isHardcoded && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                         try {
                             await signInWithCustomToken(auth, __initial_auth_token);
@@ -407,15 +398,31 @@
             } catch (error) {
                 console.log("Switching to Offline Mode:", error.message);
                 isOnline = false;
+                
+                const statusBadge = document.getElementById('connectionStatus');
+                if(statusBadge) {
+                    statusBadge.innerHTML = '🔴 연결 실패 (원인 보기)';
+                    statusBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-red-900 text-red-200 cursor-pointer hover:bg-red-800 transition mb-2';
+                    statusBadge.onclick = () => {
+                        alert("연결 실패 원인:\n" + error.message + "\n\n[해결 방법]\nFirebase Console -> Authentication -> Sign-in method -> 익명(Anonymous) '사용 설정' 켜기");
+                    };
+                }
+
                 renderLocalLeaderboard();
             }
 
             updateModeUI();
-            document.getElementById('serverLoading').classList.add('hidden');
-            document.getElementById('startScreen').classList.remove('hidden');
+            
+            const loader = document.getElementById('serverLoading');
+            if (loader) loader.classList.add('hidden');
+            
+            const startScreen = document.getElementById('startScreen');
+            if (startScreen) startScreen.classList.remove('hidden');
         }
 
         function updateModeUI() {
+            if (!isOnline) return;
+
             const statusBadge = document.getElementById('connectionStatus');
             const modeDesc = document.getElementById('modeDesc');
             const statusDot = document.getElementById('statusDot');
@@ -425,51 +432,41 @@
             const rankTitle = document.getElementById('rankTitle');
 
             if (isOnline) {
-                statusBadge.innerHTML = '🟢 온라인 모드';
-                statusBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-green-900 text-green-400';
-                modeDesc.innerText = "채널을 선택하여 랭킹을 공유하세요.";
-                statusDot.className = "w-2 h-2 rounded-full bg-green-500 animate-pulse";
-                statusText.innerText = "Live";
-                statusText.className = "text-green-400";
-                ingameStatus.innerText = "● Live " + (currentServer === 's1' ? '1채널' : currentServer === 's2' ? '2채널' : '3채널');
-                ingameStatus.className = "text-xs text-green-400";
+                if (statusBadge) {
+                    statusBadge.innerHTML = '🟢 온라인 모드';
+                    statusBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-green-900 text-green-400';
+                    statusBadge.onclick = null;
+                }
+                if (modeDesc) modeDesc.innerText = "채널을 선택하여 랭킹을 공유하세요.";
+                if (statusDot) statusDot.className = "w-2 h-2 rounded-full bg-green-500 animate-pulse";
+                if (statusText) {
+                    statusText.innerText = "Live";
+                    statusText.className = "text-green-400";
+                }
+                if (ingameStatus) {
+                    ingameStatus.innerText = "● Live " + (currentServer === 's1' ? '1채널' : currentServer === 's2' ? '2채널' : '3채널');
+                    ingameStatus.className = "text-xs text-green-400";
+                }
                 
-                // Show Server Select
-                serverSelector.classList.remove('hidden');
-                rankTitle.innerText = "1채널";
-            } else {
-                statusBadge.innerHTML = '⚪ 오프라인 모드';
-                statusBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-gray-700 text-gray-300';
-                modeDesc.innerText = "기록이 내 컴퓨터에만 저장됩니다.";
-                statusDot.className = "w-2 h-2 rounded-full bg-gray-500";
-                statusText.innerText = "Local";
-                statusText.className = "text-gray-400";
-                ingameStatus.innerText = "● Local Only";
-                ingameStatus.className = "text-xs text-gray-400";
-                
-                serverSelector.classList.add('hidden');
-                rankTitle.innerText = "로컬";
+                if (serverSelector) serverSelector.classList.remove('hidden');
+                if (rankTitle) rankTitle.innerText = "1채널";
             }
         }
 
-        // --- Leaderboard Logic (Hybrid + Channels) ---
+        // --- Leaderboard Logic ---
         function listenToLeaderboard() {
             if (!isOnline) {
                 renderLocalLeaderboard();
                 return;
             }
 
-            // Unsubscribe previous listener
-            if (unsubscribeLeaderboard) {
-                unsubscribeLeaderboard();
-            }
+            if (unsubscribeLeaderboard) unsubscribeLeaderboard();
 
-            // Define collection based on currentServer
             const collectionName = COLLECTIONS[currentServer];
             const appId = typeof __app_id !== 'undefined' ? __app_id : APP_ID;
             
-            // UI Loading state
-            document.getElementById('startLeaderboardList').innerHTML = '<div class="text-gray-500 py-4 text-center">데이터 교체 중...</div>';
+            const startList = document.getElementById('startLeaderboardList');
+            if (startList) startList.innerHTML = '<div class="text-gray-500 py-4 text-center">데이터 교체 중...</div>';
             
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', collectionName);
             
@@ -479,9 +476,8 @@
                 rankings.sort((a, b) => b.level - a.level);
                 renderLeaderboardUI(rankings);
             }, (error) => {
-                console.error("Fetch Error, fallback to local", error);
-                // Don't fallback to local immediately on error if we are supposed to be online, just show error
-                document.getElementById('startLeaderboardList').innerHTML = '<div class="text-red-500 py-4 text-center">불러오기 실패</div>';
+                console.error("Fetch Error", error);
+                if (startList) startList.innerHTML = '<div class="text-red-500 py-4 text-center">데이터 로드 실패</div>';
             });
         }
 
@@ -536,16 +532,15 @@
             if (isOnline && currentUser) {
                 try {
                     const appId = typeof __app_id !== 'undefined' ? __app_id : APP_ID;
-                    const collectionName = COLLECTIONS[currentServer]; // Use selected server
+                    const collectionName = COLLECTIONS[currentServer];
                     const colRef = collection(db, 'artifacts', appId, 'public', 'data', collectionName);
                     await addDoc(colRef, { ...data, uid: currentUser.uid });
                     return true;
                 } catch (e) {
-                    console.error("Online save failed, trying local", e);
+                    console.error("Online save failed", e);
                 }
             }
 
-            // Local Save Fallback
             const localData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
             localData.push(data);
             localData.sort((a, b) => b.level - a.level);
@@ -567,46 +562,47 @@
             { lv: 7, name: "도끼", emoji: "🪓", prob: 90, desc: "나무를 할 수 있습니다." },
             { lv: 8, name: "철검", emoji: "⚔️", prob: 85, desc: "기본적인 무기입니다." },
             { lv: 9, name: "방패", emoji: "🛡️", prob: 80, desc: "공격을 막아냅니다." }, 
-            { lv: 10, name: "은수저", emoji: "🥄", prob: 75, desc: "운이 조금 필요합니다." },
-            { lv: 11, name: "금반지", emoji: "💍", prob: 70, desc: "반짝이기 시작합니다." },
-            { lv: 12, name: "루비", emoji: "🔴", prob: 65, desc: "붉은 빛이 영롱합니다." },
-            { lv: 13, name: "사파이어", emoji: "🔵", prob: 60, desc: "푸른 바다의 색입니다." },
-            { lv: 14, name: "에메랄드", emoji: "🟢", prob: 55, desc: "숲의 기운이 느껴집니다." },
-            { lv: 15, name: "다이아몬드", emoji: "💎", prob: 50, desc: "가장 단단한 보석입니다." }, 
-            { lv: 16, name: "보물상자", emoji: "⚱️", prob: 45, desc: "무엇이 들었을까요?" },
-            { lv: 17, name: "왕관", emoji: "👑", prob: 40, desc: "권력의 상징입니다." },
-            { lv: 18, name: "마법봉", emoji: "🪄", prob: 35, desc: "신비한 힘이 깃들었습니다." },
-            { lv: 19, name: "유령", emoji: "👻", prob: 30, desc: "이승을 떠돌고 있습니다." },
-            { lv: 20, name: "도깨비불", emoji: "🔥", prob: 25, desc: "뜨겁지 않은 불꽃입니다." },
-            { lv: 21, name: "유니콘", emoji: "🦄", prob: 20, desc: "전설 속의 동물입니다." },
-            { lv: 22, name: "용", emoji: "🐉", prob: 18, desc: "하늘을 날 수 있습니다." },
-            { lv: 23, name: "불사조", emoji: "🦅", prob: 16, desc: "죽지 않는 새입니다." },
-            { lv: 24, name: "천사", emoji: "👼", prob: 14, desc: "성스러운 존재입니다." },
-            { lv: 25, name: "악마", emoji: "😈", prob: 12, desc: "유혹을 조심하세요." },
-            { lv: 26, name: "외계인", emoji: "👽", prob: 11, desc: "우주에서 왔습니다." },
-            { lv: 27, name: "UFO", emoji: "🛸", prob: 10, desc: "미확인 비행 물체입니다." },
-            { lv: 28, name: "인공위성", emoji: "🛰️", prob: 9, desc: "지구를 감시합니다." },
-            { lv: 29, name: "로켓", emoji: "🚀", prob: 8, desc: "대기권을 돌파합니다." }, 
-            { lv: 30, name: "달", emoji: "🌙", prob: 7, desc: "토끼가 살고 있습니다." },
-            { lv: 31, name: "지구", emoji: "🌍", prob: 6, desc: "우리의 고향입니다." },
-            { lv: 32, name: "태양", emoji: "☀️", prob: 5, desc: "모든 생명의 근원입니다." },
-            { lv: 33, name: "혜성", emoji: "☄️", prob: 4, desc: "꼬리가 아름답습니다." },
-            { lv: 34, name: "토성", emoji: "🪐", prob: 3, desc: "아름다운 고리를 가졌습니다." },
-            { lv: 35, name: "은하수", emoji: "🌌", prob: 2.5, desc: "별들의 강입니다." },
-            { lv: 36, name: "블랙홀", emoji: "⚫", prob: 2.0, desc: "빛조차 빠져나갈 수 없습니다." },
-            { lv: 37, name: "초신성", emoji: "💥", prob: 1.8, desc: "별의 마지막 폭발입니다." },
-            { lv: 38, name: "성운", emoji: "🌫️", prob: 1.6, desc: "별들이 태어나는 곳입니다." },
-            { lv: 39, name: "퀘이사", emoji: "✨", prob: 1.4, desc: "우주에서 가장 밝은 천체입니다." },
-            { lv: 40, name: "차원의 문", emoji: "🚪", prob: 1.2, desc: "어디로 연결될지 모릅니다." },
-            { lv: 41, name: "시간", emoji: "⏳", prob: 1.0, desc: "누구도 거스를 수 없습니다." },
-            { lv: 42, name: "공간", emoji: "💠", prob: 0.8, desc: "무한히 펼쳐져 있습니다." },
-            { lv: 43, name: "빛", emoji: "💡", prob: 0.6, desc: "가장 빠른 존재입니다." },
-            { lv: 44, name: "어둠", emoji: "🌑", prob: 0.5, desc: "빛이 없는 곳입니다." },
-            { lv: 45, name: "혼돈", emoji: "🌀", prob: 0.4, desc: "질서가 무너진 상태입니다." },
-            { lv: 46, name: "질서", emoji: "⚖️", prob: 0.3, desc: "모든 것이 제자리에 있습니다." },
-            { lv: 47, name: "생명", emoji: "🧬", prob: 0.2, desc: "기적 그 자체입니다." },
-            { lv: 48, name: "죽음", emoji: "💀", prob: 0.1, desc: "피할 수 없는 운명입니다." },
-            { lv: 49, name: "신", emoji: "🛐", prob: 0.05, desc: "전지전능한 존재입니다." },
+            // 10단계 이상 확률 3% 상향
+            { lv: 10, name: "은수저", emoji: "🥄", prob: 78, desc: "운이 조금 필요합니다." },
+            { lv: 11, name: "금반지", emoji: "💍", prob: 73, desc: "반짝이기 시작합니다." },
+            { lv: 12, name: "루비", emoji: "🔴", prob: 68, desc: "붉은 빛이 영롱합니다." },
+            { lv: 13, name: "사파이어", emoji: "🔵", prob: 63, desc: "푸른 바다의 색입니다." },
+            { lv: 14, name: "에메랄드", emoji: "🟢", prob: 58, desc: "숲의 기운이 느껴집니다." },
+            { lv: 15, name: "다이아몬드", emoji: "💎", prob: 53, desc: "가장 단단한 보석입니다." },
+            { lv: 16, name: "보물상자", emoji: "⚱️", prob: 48, desc: "무엇이 들었을까요?" },
+            { lv: 17, name: "왕관", emoji: "👑", prob: 43, desc: "권력의 상징입니다." },
+            { lv: 18, name: "마법봉", emoji: "🪄", prob: 38, desc: "신비한 힘이 깃들었습니다." },
+            { lv: 19, name: "유령", emoji: "👻", prob: 33, desc: "이승을 떠돌고 있습니다." },
+            { lv: 20, name: "도깨비불", emoji: "🔥", prob: 28, desc: "뜨겁지 않은 불꽃입니다." },
+            { lv: 21, name: "유니콘", emoji: "🦄", prob: 23, desc: "전설 속의 동물입니다." },
+            { lv: 22, name: "용", emoji: "🐉", prob: 21, desc: "하늘을 날 수 있습니다." },
+            { lv: 23, name: "불사조", emoji: "🦅", prob: 19, desc: "죽지 않는 새입니다." },
+            { lv: 24, name: "천사", emoji: "👼", prob: 17, desc: "성스러운 존재입니다." },
+            { lv: 25, name: "악마", emoji: "😈", prob: 15, desc: "유혹을 조심하세요." },
+            { lv: 26, name: "외계인", emoji: "👽", prob: 14, desc: "우주에서 왔습니다." },
+            { lv: 27, name: "UFO", emoji: "🛸", prob: 13, desc: "미확인 비행 물체입니다." },
+            { lv: 28, name: "인공위성", emoji: "🛰️", prob: 12, desc: "지구를 감시합니다." },
+            { lv: 29, name: "로켓", emoji: "🚀", prob: 11, desc: "대기권을 돌파합니다." },
+            { lv: 30, name: "달", emoji: "🌙", prob: 10, desc: "토끼가 살고 있습니다." },
+            { lv: 31, name: "지구", emoji: "🌍", prob: 9, desc: "우리의 고향입니다." },
+            { lv: 32, name: "태양", emoji: "☀️", prob: 8, desc: "모든 생명의 근원입니다." },
+            { lv: 33, name: "혜성", emoji: "☄️", prob: 7, desc: "꼬리가 아름답습니다." },
+            { lv: 34, name: "토성", emoji: "🪐", prob: 6, desc: "아름다운 고리를 가졌습니다." },
+            { lv: 35, name: "은하수", emoji: "🌌", prob: 5.5, desc: "별들의 강입니다." },
+            { lv: 36, name: "블랙홀", emoji: "⚫", prob: 5.0, desc: "빛조차 빠져나갈 수 없습니다." },
+            { lv: 37, name: "초신성", emoji: "💥", prob: 4.8, desc: "별의 마지막 폭발입니다." },
+            { lv: 38, name: "성운", emoji: "🌫️", prob: 4.6, desc: "별들이 태어나는 곳입니다." },
+            { lv: 39, name: "퀘이사", emoji: "✨", prob: 4.4, desc: "우주에서 가장 밝은 천체입니다." },
+            { lv: 40, name: "차원의 문", emoji: "🚪", prob: 4.2, desc: "어디로 연결될지 모릅니다." },
+            { lv: 41, name: "시간", emoji: "⏳", prob: 4.0, desc: "누구도 거스를 수 없습니다." },
+            { lv: 42, name: "공간", emoji: "💠", prob: 3.8, desc: "무한히 펼쳐져 있습니다." },
+            { lv: 43, name: "빛", emoji: "💡", prob: 3.6, desc: "가장 빠른 존재입니다." },
+            { lv: 44, name: "어둠", emoji: "🌑", prob: 3.5, desc: "빛이 없는 곳입니다." },
+            { lv: 45, name: "혼돈", emoji: "🌀", prob: 3.4, desc: "질서가 무너진 상태입니다." },
+            { lv: 46, name: "질서", emoji: "⚖️", prob: 3.3, desc: "모든 것이 제자리에 있습니다." },
+            { lv: 47, name: "생명", emoji: "🧬", prob: 3.2, desc: "기적 그 자체입니다." },
+            { lv: 48, name: "죽음", emoji: "💀", prob: 3.1, desc: "피할 수 없는 운명입니다." },
+            { lv: 49, name: "신", emoji: "🛐", prob: 3.05, desc: "전지전능한 존재입니다." },
             { lv: 50, name: "우주의 섭리", emoji: "⚛️", prob: 0, desc: "존재하는 모든 것의 이유." }
         ];
 
@@ -635,7 +631,10 @@
             resultSaved: document.getElementById('resultSaved'),
             leaderboardSection: document.getElementById('leaderboardSection'),
             leaderboardList: document.getElementById('leaderboardList'),
-            startLeaderboardList: document.getElementById('startLeaderboardList')
+            startLeaderboardList: document.getElementById('startLeaderboardList'),
+            feverBar: document.getElementById('feverBar'),
+            feverText: document.getElementById('feverText'),
+            safeZoneIndicator: document.getElementById('safeZoneIndicator')
         };
         
         window.startGame = function() {
@@ -647,6 +646,9 @@
             playerName = name;
             currentLevel = 0;
             isProcessing = false;
+            feverCount = 0;
+            feverActive = false;
+            consumedCheckpoints.clear(); // Reset used checkpoints
             
             updateUI();
             addLog("게임을 시작합니다. 행운을 빕니다!");
@@ -662,11 +664,21 @@
 
             isProcessing = true;
             const currentData = GAME_DATA[currentLevel];
-            const prob = currentData.prob;
+            let prob = currentData.prob;
+
+            // Fever Bonus
+            if (feverActive) {
+                prob = Math.min(prob + 5, 99); // Max 99
+            }
 
             const btn = document.getElementById('upgradeBtn');
             btn.classList.add('scale-95', 'brightness-75');
-            addLog(`강화 시도 중... (확률: ${prob}%)`);
+            
+            const probText = feverActive ? `${prob}% (FEVER +5%)` : `${prob}%`;
+            addLog(`강화 시도 중... (확률: ${probText})`);
+
+            // Speed up if fever
+            const delay = feverActive ? 300 : 600;
 
             setTimeout(() => {
                 btn.classList.remove('scale-95', 'brightness-75');
@@ -680,10 +692,21 @@
                     fail();
                 }
                 isProcessing = false;
-            }, 600);
+            }, delay);
         };
 
         function success(increment) {
+            // Fever Logic
+            if (!feverActive) {
+                feverCount++;
+                const progress = Math.min((feverCount / FEVER_THRESHOLD) * 100, 100);
+                els.feverBar.style.width = `${progress}%`;
+                
+                if (feverCount >= FEVER_THRESHOLD) {
+                    activateFever();
+                }
+            }
+
             const prevLevel = currentLevel;
             currentLevel = Math.min(currentLevel + increment, 50);
             const actualIncrement = currentLevel - prevLevel;
@@ -713,10 +736,60 @@
         }
 
         function fail() {
-            addLog(`💥 강화 실패... 아이템이 파괴되었습니다.`);
-            showFloatingText("파괴됨...", "#ef4444");
-            triggerEffect('animate-shake');
-            showResult(false);
+            // Reset Fever
+            feverCount = 0;
+            if (!feverActive) els.feverBar.style.width = '0%';
+
+            // 1. Lucky Revive (5% chance)
+            const luckyRoll = Math.random() * 100;
+            if (luckyRoll < 5) {
+                addLog(`😇 천사가 아이템을 보호했습니다! (파괴 방어)`);
+                showFloatingText("😇 기적의 부활!", "#60a5fa");
+                triggerEffect('animate-flash');
+                return;
+            }
+
+            // 2. Checkpoints Logic (One-time Use)
+            let savedLevel = 0;
+            for (let cp of CHECKPOINTS) {
+                if (currentLevel >= cp) {
+                    savedLevel = cp;
+                }
+            }
+
+            // Check if savedLevel exists and hasn't been consumed
+            if (savedLevel > 0 && !consumedCheckpoints.has(savedLevel)) {
+                consumedCheckpoints.add(savedLevel); // Mark as consumed
+                currentLevel = savedLevel;
+                const data = GAME_DATA[currentLevel];
+                addLog(`🛡️ 강화 실패... ${savedLevel}단계에서 보존되었습니다. (보존권 소멸)`);
+                showFloatingText(`🛡️ ${savedLevel}단계 보존 (사용됨)`, "#4ade80");
+                triggerEffect('animate-shake');
+                updateUI();
+            } else {
+                addLog(`💥 강화 실패... 아이템이 파괴되었습니다.`);
+                showFloatingText("파괴됨...", "#ef4444");
+                triggerEffect('animate-shake');
+                showResult(false);
+            }
+        }
+
+        function activateFever() {
+            feverActive = true;
+            els.feverText.classList.remove('hidden');
+            els.cardArea.classList.add('fever-active');
+            addLog(`🔥 피버 타임 발동! 확률 +5% (5초간)`);
+            
+            if (feverTimer) clearTimeout(feverTimer);
+            feverTimer = setTimeout(() => {
+                feverActive = false;
+                feverCount = 0;
+                els.feverBar.style.width = '0%';
+                els.feverText.classList.add('hidden');
+                els.cardArea.classList.remove('fever-active');
+                addLog(`❄️ 피버 타임 종료`);
+                updateUI(); // Reset probability display
+            }, FEVER_DURATION);
         }
 
         function showFloatingText(text, color) {
@@ -784,14 +857,40 @@
             els.nameDisplay.innerText = data.name;
             els.descDisplay.innerText = data.desc;
             
+            // Calc probability
+            let prob = data.prob; 
+            if (feverActive) prob = Math.min(prob + 5, 99);
+
             if (currentLevel < 50) {
-                els.currentChance.innerText = `${GAME_DATA[currentLevel].prob}%`;
-                els.currentChance.className = getProbColor(GAME_DATA[currentLevel].prob);
+                els.currentChance.innerText = feverActive ? `${prob}% (FEVER)` : `${prob}%`;
+                els.currentChance.className = getProbColor(prob);
             } else {
                 els.currentChance.innerText = "-";
             }
             const progress = (currentLevel / 50) * 100;
             els.progressBar.style.width = `${progress}%`;
+
+            // Safe Zone Indicator Update
+            // Logic: Is there a reachable checkpoint below or at current level?
+            let currentCheckpoint = 0;
+            for (let cp of CHECKPOINTS) {
+                if (currentLevel >= cp) currentCheckpoint = cp;
+            }
+
+            if (currentCheckpoint > 0) {
+                els.safeZoneIndicator.classList.remove('hidden');
+                if (consumedCheckpoints.has(currentCheckpoint)) {
+                    // Checkpoint used
+                    els.safeZoneIndicator.innerHTML = `⚠️ ${currentCheckpoint}단계 보존 불가 (사용됨)`;
+                    els.safeZoneIndicator.className = "absolute top-4 right-4 text-xs font-bold bg-red-900/80 text-red-400 px-2 py-1 rounded border border-red-700 transition-colors";
+                } else {
+                    // Checkpoint available
+                    els.safeZoneIndicator.innerHTML = `🛡️ ${currentCheckpoint}단계 보존 가능`;
+                    els.safeZoneIndicator.className = "absolute top-4 right-4 text-xs font-bold bg-green-900/80 text-green-400 px-2 py-1 rounded border border-green-600 transition-colors";
+                }
+            } else {
+                els.safeZoneIndicator.classList.add('hidden');
+            }
         }
 
         function addLog(msg) {
@@ -818,8 +917,8 @@
             }
         }
 
-        // Start Init
-        initSystem();
+        // Start Init on DOMContentLoaded
+        window.addEventListener('DOMContentLoaded', initSystem);
     </script>
 </body>
 </html>
