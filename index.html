@@ -3,17 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>이모지 강화하기 Live 1.7 (Easy) 🌍</title>
+    <title>이모지 강화하기 Live 1.9 (X-MAS) 🎄</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Jua', sans-serif;
-            background-color: #1a1a2e;
+            background-color: #0f172a;
             color: #fff;
             overflow-x: hidden;
             touch-action: manipulation;
+            /* 성탄절 밤 배경 이미지 */
+            background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url('https://images.unsplash.com/photo-1543589077-47d81606c1bf?q=80&w=1000&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
         }
         
         /* 효과 애니메이션 정의 */
@@ -64,7 +71,7 @@
 
         .fever-active {
             animation: fever-pulse 0.5s infinite;
-            background: linear-gradient(to bottom, #451a03, #1a1a2e) !important;
+            background: linear-gradient(to bottom, #7f1d1d, #1a1a2e) !important; /* Red to Dark */
         }
 
         .animate-flash { animation: flash 0.3s ease-out; }
@@ -76,9 +83,11 @@
         
         .modal-bg { background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px); }
         .glass-panel {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
         }
 
         .floating-text {
@@ -96,7 +105,7 @@
 
         .loader {
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
+            border-top: 4px solid #ef4444; /* Red spinner */
             border-radius: 50%;
             width: 20px;
             height: 20px;
@@ -112,8 +121,13 @@
         }
         .server-tab.active {
             opacity: 1;
-            border-bottom-color: #fbbf24;
-            color: #fbbf24;
+            border-bottom-color: #ef4444; /* Red underline */
+            color: #fca5a5; /* Light red text */
+        }
+
+        /* Decorative Font for Merry Christmas */
+        .xmas-font {
+            font-family: 'Mountains of Christmas', cursive;
         }
     </style>
 </head>
@@ -122,63 +136,76 @@
     <!-- Loading Overlay -->
     <div id="serverLoading" class="fixed inset-0 z-[60] bg-black/80 flex flex-col items-center justify-center text-center p-4">
         <div class="loader mb-4 mx-auto" style="width: 40px; height: 40px;"></div>
-        <p class="text-yellow-400">시스템 연결 중...</p>
+        <p class="text-white">크리스마스 선물 준비 중...</p>
     </div>
 
     <!-- Start Screen -->
     <div id="startScreen" class="w-full max-w-md text-center space-y-6 hidden relative">
-        <!-- Settings Button -->
-        <button onclick="window.openConfigModal()" class="absolute top-0 right-0 p-2 text-gray-400 hover:text-white transition text-xs" title="서버 설정">
-            ⚙️ 설정
-        </button>
+        
+        <!-- Decorative Merry Christmas Text (Top Left) -->
+        <div class="absolute -top-8 -left-8 transform -rotate-12 z-10 pointer-events-none">
+            <h2 class="xmas-font text-3xl text-red-500 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]" 
+                style="-webkit-text-stroke: 1px #fff; font-weight: 700;">
+                Merry<br><span class="pl-4 text-green-500">Christmas!</span>
+            </h2>
+        </div>
 
-        <h1 class="text-5xl text-yellow-400 drop-shadow-lg mb-2 pt-4">
+        <!-- Settings & Copyright -->
+        <div class="absolute top-0 right-0 flex flex-col items-end gap-1 z-20">
+            <button onclick="window.openConfigModal()" class="p-1 text-gray-300 hover:text-white transition text-xs" title="서버 설정">
+                ⚙️ 설정
+            </button>
+            <div class="text-[10px] text-gray-400/80 font-sans tracking-tight pr-1">
+                Copyright: YeomT
+            </div>
+        </div>
+
+        <h1 class="text-5xl text-white drop-shadow-lg mb-2 pt-12 font-bold relative z-0">
             이모지 강화하기
-            <span class="text-xs align-top bg-green-600 text-white px-1.5 py-0.5 rounded-md ml-1 shadow-md">Easy</span>
         </h1>
         
         <!-- Connection Status & Server Select -->
-        <div class="flex flex-col items-center gap-2 mb-2">
-            <div id="connectionStatus" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-gray-700 text-gray-400 cursor-pointer hover:bg-gray-600 transition">
+        <div class="flex flex-col items-center gap-2 mb-2 relative z-10">
+            <div id="connectionStatus" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-green-900/80 text-green-200 cursor-pointer hover:bg-green-800 transition border border-green-700">
                 ⚪ 오프라인
             </div>
             
             <!-- Server Select Tabs -->
-            <div id="serverSelector" class="hidden flex gap-4 text-sm font-bold bg-gray-800/50 p-2 rounded-xl border border-gray-700">
+            <div id="serverSelector" class="hidden flex gap-4 text-sm font-bold bg-black/40 p-2 rounded-xl border border-red-900/50">
                 <button onclick="window.switchServer('s1')" id="btn-s1" class="server-tab active px-2">1채널</button>
                 <button onclick="window.switchServer('s2')" id="btn-s2" class="server-tab px-2">2채널</button>
                 <button onclick="window.switchServer('s3')" id="btn-s3" class="server-tab px-2">3채널</button>
             </div>
         </div>
 
-        <p class="text-gray-400 text-lg">0단계 먼지부터 50단계 우주까지!</p>
+        <p class="text-gray-300 text-lg relative z-10">0단계 먼지부터 50단계 우주까지!</p>
         
-        <div class="glass-panel p-6 space-y-4">
-            <div class="text-6xl animate-bounce">⚒️</div>
-            <div class="text-sm text-gray-300 space-y-1">
-                <p><span class="text-green-400 font-bold">Easy Mode!</span> 확률 3% 상향 & 구간별 보존!</p>
-                <p>연속 성공 시 <span class="text-orange-400 font-bold">피버 타임</span> 발동!</p>
+        <div class="glass-panel p-6 space-y-4 border-t-4 border-red-600 relative z-10">
+            <div class="text-6xl animate-bounce">🎁</div>
+            <div class="text-sm text-gray-200 space-y-1">
+                <p><span class="text-green-400 font-bold">Very Easy!</span> <span class="text-yellow-400 font-bold underline">5단계마다</span> 보존 구간 적용!</p>
+                <p>연속 성공 시 <span class="text-red-400 font-bold">피버 타임</span> 발동!</p>
             </div>
-            <p class="text-sm text-gray-300">
+            <p class="text-sm text-gray-400">
                 <span id="modeDesc">로컬에 기록이 저장됩니다.</span>
             </p>
             <input type="text" id="playerNameInput" placeholder="닉네임 (최대 8글자)" maxlength="8" 
-                class="w-full p-3 rounded-lg bg-gray-800 border border-gray-600 text-center text-xl focus:outline-none focus:border-yellow-500 transition-colors">
-            <button onclick="window.startGame()" class="w-full bg-gradient-to-r from-blue-500 to-purple-600 py-4 rounded-xl text-2xl font-bold shadow-lg hover:scale-105 transition-transform active:scale-95">
-                도전 시작!
+                class="w-full p-3 rounded-lg bg-black/50 border border-green-800 text-center text-xl text-white focus:outline-none focus:border-red-500 transition-colors placeholder-gray-500">
+            <button onclick="window.startGame()" class="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black py-4 rounded-xl text-2xl font-bold shadow-lg hover:scale-105 transition-transform active:scale-95 border-b-4 border-yellow-800">
+                ⭐ 도전 시작!
             </button>
         </div>
 
-        <div class="glass-panel p-4 relative">
+        <div class="glass-panel p-4 relative border-t-2 border-green-600 z-10">
             <div class="flex justify-between items-center mb-2">
-                <h3 class="text-xl text-yellow-300">🏆 <span id="rankTitle">로컬</span> 랭킹</h3>
+                <h3 class="text-xl text-green-300">🏆 <span id="rankTitle">로컬</span> 랭킹</h3>
                 <div class="flex items-center gap-1 text-xs text-gray-400">
                     <div id="statusDot" class="w-2 h-2 rounded-full bg-gray-500"></div> 
                     <span id="statusText">Local</span>
                 </div>
             </div>
             <div id="startLeaderboardList" class="space-y-2 text-sm min-h-[100px]">
-                <div class="text-gray-500 py-4">데이터 불러오는 중...</div>
+                <div class="text-gray-400 py-4">데이터 불러오는 중...</div>
             </div>
         </div>
     </div>
@@ -186,26 +213,26 @@
     <!-- Game Screen -->
     <div id="gameScreen" class="hidden w-full max-w-md flex flex-col items-center relative">
         <!-- Top Info -->
-        <div class="w-full flex justify-between items-center mb-2 glass-panel p-3 px-5">
-            <div class="text-gray-400">플레이어: <span id="displayPlayerName" class="text-white font-bold"></span></div>
-            <div class="text-gray-400">확률: <span id="currentChance" class="text-green-400 font-bold">99%</span></div>
+        <div class="w-full flex justify-between items-center mb-2 glass-panel p-3 px-5 border-b-2 border-green-700">
+            <div class="text-gray-300">플레이어: <span id="displayPlayerName" class="text-white font-bold"></span></div>
+            <div class="text-gray-300">확률: <span id="currentChance" class="text-green-400 font-bold">99%</span></div>
         </div>
 
         <!-- Fever Bar -->
-        <div class="w-full h-2 bg-gray-800 rounded-full mb-4 overflow-hidden border border-gray-700 relative">
-            <div id="feverBar" class="h-full bg-gradient-to-r from-orange-500 to-yellow-400 transition-all duration-300" style="width: 0%"></div>
-            <div id="feverText" class="absolute inset-0 text-[10px] flex items-center justify-center font-bold text-black hidden">🔥 FEVER MODE 🔥</div>
+        <div class="w-full h-2 bg-gray-900 rounded-full mb-4 overflow-hidden border border-gray-700 relative">
+            <div id="feverBar" class="h-full bg-gradient-to-r from-red-500 to-yellow-400 transition-all duration-300" style="width: 0%"></div>
+            <div id="feverText" class="absolute inset-0 text-[10px] flex items-center justify-center font-bold text-white hidden drop-shadow-md">🔥 HOLIDAY FEVER 🔥</div>
         </div>
 
         <!-- Main Card -->
-        <div id="cardArea" class="w-full bg-gradient-to-b from-gray-800 to-gray-900 rounded-3xl p-8 shadow-2xl border-4 border-gray-700 text-center relative overflow-hidden mb-6 transition-colors duration-500">
+        <div id="cardArea" class="w-full bg-gradient-to-b from-gray-800 to-gray-900 rounded-3xl p-8 shadow-2xl border-4 border-green-800 text-center relative overflow-hidden mb-6 transition-colors duration-500">
             <!-- Safe Zone Indicator -->
             <div id="safeZoneIndicator" class="hidden absolute top-4 right-4 text-xs font-bold px-2 py-1 rounded border transition-colors">
                 <!-- Text Injected by JS -->
             </div>
 
             <div class="absolute top-0 left-0 w-full h-2 bg-gray-700">
-                <div id="progressBar" class="h-full bg-yellow-500 transition-all duration-500" style="width: 0%"></div>
+                <div id="progressBar" class="h-full bg-red-500 transition-all duration-500" style="width: 0%"></div>
             </div>
             
             <div class="mt-4 mb-2 text-gray-400 font-bold tracking-widest text-sm">LEVEL <span id="levelDisplay" class="text-2xl text-white">0</span></div>
@@ -223,7 +250,7 @@
             <button onclick="window.stopGame()" class="bg-gray-700 hover:bg-gray-600 text-gray-200 py-4 rounded-2xl font-bold text-xl shadow-lg transform transition active:scale-95 border-b-4 border-gray-900">
                 ✋ 멈추기<br><span class="text-xs font-normal text-gray-400">기록 저장</span>
             </button>
-            <button id="upgradeBtn" onclick="window.attemptUpgrade()" class="bg-gradient-to-b from-red-500 to-red-700 hover:from-red-400 hover:to-red-600 text-white py-4 rounded-2xl font-bold text-xl shadow-lg transform transition active:scale-95 border-b-4 border-red-900 relative overflow-hidden">
+            <button id="upgradeBtn" onclick="window.attemptUpgrade()" class="bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white py-4 rounded-2xl font-bold text-xl shadow-lg transform transition active:scale-95 border-b-4 border-red-900 relative overflow-hidden">
                 <span class="relative z-10">🔨 강화하기</span>
             </button>
         </div>
@@ -235,12 +262,12 @@
 
     <!-- Result Modal -->
     <div id="resultModal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-50 p-4">
-        <div class="bg-gray-800 border-2 border-gray-600 w-full max-w-sm rounded-2xl p-6 text-center shadow-2xl transform scale-100 transition-transform">
+        <div class="bg-gray-800 border-2 border-red-700 w-full max-w-sm rounded-2xl p-6 text-center shadow-2xl transform scale-100 transition-transform">
             <div id="resultIcon" class="text-6xl mb-4">💥</div>
-            <h2 id="resultTitle" class="text-3xl font-bold mb-2">강화 실패!</h2>
+            <h2 id="resultTitle" class="text-3xl font-bold mb-2 text-white">강화 실패!</h2>
             <p id="resultDesc" class="text-gray-300 mb-6">아쉽게도 아이템이 파괴되었습니다.</p>
             
-            <div class="bg-gray-900 rounded-lg p-4 mb-6">
+            <div class="bg-gray-900 rounded-lg p-4 mb-6 border border-gray-700">
                 <div class="flex justify-between text-sm text-gray-400 mb-1">
                     <span>최종 레벨</span>
                     <span>기록 저장</span>
@@ -251,7 +278,7 @@
                 </div>
             </div>
 
-            <button onclick="window.resetGame()" class="w-full bg-white text-gray-900 py-3 rounded-xl font-bold text-lg hover:bg-gray-200 transition">
+            <button onclick="window.resetGame()" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold text-lg hover:bg-green-500 transition shadow-lg">
                 다시 도전하기
             </button>
         </div>
@@ -317,7 +344,7 @@
             s3: 'emoji_rankings_v2_s3'
         };
 
-        const CHECKPOINTS = [10, 20, 30, 40];
+        const CHECKPOINTS = [5, 10, 15, 20, 25, 30, 35, 40, 45];
         // Track consumed checkpoints (set of level numbers)
         let consumedCheckpoints = new Set();
 
@@ -434,7 +461,7 @@
             if (isOnline) {
                 if (statusBadge) {
                     statusBadge.innerHTML = '🟢 온라인 모드';
-                    statusBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-green-900 text-green-400';
+                    statusBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-green-900/80 text-green-200 border border-green-700';
                     statusBadge.onclick = null;
                 }
                 if (modeDesc) modeDesc.innerText = "채널을 선택하여 랭킹을 공유하세요.";
@@ -466,7 +493,7 @@
             const appId = typeof __app_id !== 'undefined' ? __app_id : APP_ID;
             
             const startList = document.getElementById('startLeaderboardList');
-            if (startList) startList.innerHTML = '<div class="text-gray-500 py-4 text-center">데이터 교체 중...</div>';
+            if (startList) startList.innerHTML = '<div class="text-gray-400 py-4 text-center">데이터 교체 중...</div>';
             
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', collectionName);
             
@@ -500,7 +527,7 @@
 
                 displayList.forEach((rank, index) => {
                     const isTop = index < 3;
-                    const rowClass = isTop ? 'bg-gray-700/50 border-yellow-500/30' : 'bg-gray-800/30 border-gray-700';
+                    const rowClass = isTop ? 'bg-black/30 border-yellow-500/30' : 'bg-black/20 border-green-900';
                     const rankBadge = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}위`;
                     const isMe = rank.name === playerName;
                     const nameClass = isMe ? "text-yellow-300 font-bold" : "text-white font-bold";
